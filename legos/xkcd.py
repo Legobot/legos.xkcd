@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class XKCD(Lego):
     def listening_for(self, message):
         return message['text'].split()[0] == '!xkcd'
@@ -31,7 +32,7 @@ class XKCD(Lego):
 
         self.reply(message, return_val, opts)
 
-    def _parse_args(self,message):
+    def _parse_args(self, message):
         comic_id = None
         try:
             comic_id = message['text'].split()[1]
@@ -42,17 +43,17 @@ class XKCD(Lego):
         logger.debug('_parse_args comic_id: %s' % comic_id)
         return comic_id
 
-    def _handle_opts(self,message):
+    def _handle_opts(self, message):
         try:
             target = message['metadata']['source_channel']
-            opts = {'target':target}
+            opts = {'target': target}
         except IndexError:
             opts = None
-            logger.error('Could not identify message source in message: %s' \
+            logger.error('Could not identify message source in message: %s'
                          % str(message))
         return opts
 
-    def _build_url(self,comic_id):
+    def _build_url(self, comic_id):
         if comic_id is not None:
             if comic_id == 'r' or comic_id == 'random':
                 logger.debug('Random comic requested...')
@@ -64,8 +65,7 @@ class XKCD(Lego):
             url = 'http://xkcd.com/'
         return url
 
-
-    def _parse_for_comic(self,r):
+    def _parse_for_comic(self, r):
         content = r.text
         comic_regex = r'<div id="comic".*?\n?.*?(//im.+?)".+?\s?title="(.+?)"'
         comic = re.search(comic_regex, content)
