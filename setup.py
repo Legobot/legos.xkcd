@@ -30,7 +30,7 @@ setup(
                       ],
     classifiers=[
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-
+        'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 3'
     ],
     packages=find_packages()
