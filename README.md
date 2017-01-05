@@ -8,9 +8,9 @@ Fetch xkcd comics right from chat using this xkcd lego.
 
 ## Usage
 
-`!xkcd` returns the latest comic
-`!xkcd r` or `!xkcd random` will return a random comic
-`!xkcd [int]` will search for and return the comic of corresponding number
+- `!xkcd` returns the latest comic
+- `!xkcd r` or `!xkcd random` will return a random comic
+- `!xkcd [int]` will search for and return the comic of corresponding number
 
 ## Installation
 
