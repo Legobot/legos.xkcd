@@ -15,14 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from setuptools import setup, find_packages
-descrption = 'xkcd comic fetcher plugin for Legobot'
+description = 'xkcd comic fetcher plugin for Legobot'
 name = 'legos.xkcd'
 setup(
     name=name,
     version='0.1.1',
     namespace_packages=name.split('.')[:-1],
     license='GPLv3',
-    description='xkcd comic fetcher plugin for Legobot',
+    description=description or name,
     author='Brenton Briggs II',
     url='https://github.com/bbriggs/' + name,
     install_requires=['legobot>=1.0.1',
@@ -30,7 +30,7 @@ setup(
                       ],
     classifiers=[
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-
+        'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 3'
     ],
     packages=find_packages()
