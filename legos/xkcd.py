@@ -8,8 +8,12 @@ logger = logging.getLogger(__name__)
 
 class XKCD(Lego):
     def listening_for(self, message):
-        return message['text'].split()[0] == '!xkcd'
-        logger.debug('xkcd lego triggered')
+        if message['text'] is not None:
+            try:
+                return message['text'].split()[0] == '!xkcd'
+            except Exception as e:
+                logger.error('XKCD lego failed to check message text: %s' % e)
+                return False
 
     def handle(self, message):
         logger.debug('Handling message...')
