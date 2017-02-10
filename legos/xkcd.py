@@ -63,20 +63,25 @@ class XKCD(Lego):
         if comic_id is not None:
             if comic_id == 'r' or comic_id == 'random':
                 logger.debug('Random comic requested...')
-                latest = requests.get('http://xkcd.com/info.0.json')
-                if latest.status_code == requests.codes.ok:
-                    latest_json = latest.text
-                    latest_json = json.loads(latest_json)
-                    comic_id = random.randint(1,latest_json['num'])
-                else:
-                    logger.error('Requests encountered an error.')
-                    logger.error('HTTP GET response code: %s' % latest.status_code)
-                    latest.raise_for_status()
+                comic_id = self._get_random_comic_id()
                 logger.debug('User requested comic by id: %s' % str(comic_id))
                 url = 'http://xkcd.com/%s/info.0.json' % str(comic_id)
         else:
             url = 'http://xkcd.com/info.0.json'
         return url
+
+    def _get_random_comic_id(self):
+        latest = requests.get('http://xkcd.com/info.0.json')
+        if latest.status_code == requests.codes.ok:
+            latest_json = latest.text
+            latest_json = json.loads(latest_json)
+            comic_id = random.randint(1,latest_json['num'])
+        else:
+            logger.error('Requests encountered an error.')
+            logger.error('HTTP GET response code: %s' % latest.status_code)
+            latest.raise_for_status()
+            comic_id = 1337
+        return comic_id
 
     def _parse_for_comic(self, r):
         comic = json.loads(r.text)
