@@ -1,6 +1,5 @@
 from Legobot.Lego import Lego
 import requests
-import re
 import logging
 import json
 import random
@@ -75,7 +74,7 @@ class XKCD(Lego):
         if latest.status_code == requests.codes.ok:
             latest_json = latest.text
             latest_json = json.loads(latest_json)
-            comic_id = random.randint(1,latest_json['num'])
+            comic_id = random.randint(1, latest_json['num'])
         else:
             logger.error('Requests encountered an error.')
             logger.error('HTTP GET response code: %s' % latest.status_code)
