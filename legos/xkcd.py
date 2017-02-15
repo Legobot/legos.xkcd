@@ -1,15 +1,20 @@
 from Legobot.Lego import Lego
 import requests
-import re
 import logging
+import json
+import random
 
 logger = logging.getLogger(__name__)
 
 
 class XKCD(Lego):
     def listening_for(self, message):
-        return message['text'].split()[0] == '!xkcd'
-        logger.debug('xkcd lego triggered')
+        if message['text'] is not None:
+            try:
+                return message['text'].split()[0] == '!xkcd'
+            except Exception as e:
+                logger.error('XKCD lego failed to check message text: %s' % e)
+                return False
 
     def handle(self, message):
         logger.debug('Handling message...')
@@ -57,21 +62,31 @@ class XKCD(Lego):
         if comic_id is not None:
             if comic_id == 'r' or comic_id == 'random':
                 logger.debug('Random comic requested...')
-                url = 'http://dynamic.xkcd.com/random/comic'
-            else:
+                comic_id = self._get_random_comic_id()
                 logger.debug('User requested comic by id: %s' % str(comic_id))
-                url = 'http://xkcd.com/%s' % str(comic_id)
+                url = 'http://xkcd.com/%s/info.0.json' % str(comic_id)
         else:
-            url = 'http://xkcd.com/'
+            url = 'http://xkcd.com/info.0.json'
         return url
 
+    def _get_random_comic_id(self):
+        latest = requests.get('http://xkcd.com/info.0.json')
+        if latest.status_code == requests.codes.ok:
+            latest_json = latest.text
+            latest_json = json.loads(latest_json)
+            comic_id = random.randint(1, latest_json['num'])
+        else:
+            logger.error('Requests encountered an error.')
+            logger.error('HTTP GET response code: %s' % latest.status_code)
+            latest.raise_for_status()
+            comic_id = 1337
+        return comic_id
+
     def _parse_for_comic(self, r):
-        content = r.text
-        comic_regex = r'<div id="comic".*?\n?.*?(//im.+?)".+?\s?title="(.+?)"'
-        comic = re.search(comic_regex, content)
+        comic = json.loads(r.text)
         if comic:
-            altText = comic.group(2).replace("&#39;", "'")
-            response = "%s %s" % (altText, "http:" + comic.group(1))
+            altText = comic['alt'].replace("&#39;", "'")
+            response = "%s %s" % (altText, comic['img'])
         else:
             logger.error('Unable to find comic')
             response = "Unable to find a comic"
