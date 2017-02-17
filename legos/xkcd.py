@@ -1,7 +1,8 @@
 from Legobot.Lego import Lego
 import requests
-import re
 import logging
+import json
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,8 @@ class XKCD(Lego):
             try:
                 return message['text'].split()[0] == '!xkcd'
             except Exception as e:
-                logger.error('XKCD lego failed to check message text: %s' % e)
+                logger.error('''XKCD lego failed to check message text:
+                            {}'''.format(e))
                 return False
 
     def handle(self, message):
@@ -25,13 +27,14 @@ class XKCD(Lego):
 
         url = self._build_url(comic_id)
 
-        logger.info('Retrieving URL: %s' % url)
+        logger.info('Retrieving URL: {}'.format(url))
         webpage = requests.get(url)
         if webpage.status_code == requests.codes.ok:
             return_val = self._parse_for_comic(webpage)
         else:
             logger.error('Requests encountered an error.')
-            logger.error('HTTP GET response code: %s' % webpage.status_code)
+            logger.error('''HTTP GET response code:
+                        {}'''.format(webpage.status_code))
             webpage.raise_for_status()
 
         self.reply(message, return_val, opts)
@@ -40,11 +43,11 @@ class XKCD(Lego):
         comic_id = None
         try:
             comic_id = message['text'].split()[1]
-            logger.debug('Found an argument: %s' % str(id))
+            logger.debug('Found an argument: {}'.format(str(comic_id)))
         except IndexError:
             comic_id = None
-            logger.debug('No args provided. Setting "id" to None')
-        logger.debug('_parse_args comic_id: %s' % comic_id)
+            logger.debug('No args provided. Setting "comic_id" to None')
+        logger.debug('_parse_args comic_id: {}'.format(comic_id))
         return comic_id
 
     def _handle_opts(self, message):
@@ -53,32 +56,45 @@ class XKCD(Lego):
             opts = {'target': target}
         except IndexError:
             opts = None
-            logger.error('Could not identify message source in message: %s'
-                         % str(message))
+            logger.error('''Could not identify message source in message:
+                        {}'''.format(str(message)))
         return opts
 
     def _build_url(self, comic_id):
         if comic_id is not None:
             if comic_id == 'r' or comic_id == 'random':
                 logger.debug('Random comic requested...')
-                url = 'http://dynamic.xkcd.com/random/comic'
+                comic_id = self._get_random_comic_id()
             else:
-                logger.debug('User requested comic by id: %s' % str(comic_id))
-                url = 'http://xkcd.com/%s' % str(comic_id)
+                logger.debug('''User requested comic by id:
+                            {}'''.format(str(comic_id)))
+            url = 'http://xkcd.com/{}/info.0.json'.format(str(comic_id))
         else:
-            url = 'http://xkcd.com/'
+            url = 'http://xkcd.com/info.0.json'
         return url
 
+    def _get_random_comic_id(self):
+        latest = requests.get('http://xkcd.com/info.0.json')
+        if latest.status_code == requests.codes.ok:
+            latest_json = latest.text
+            latest_json = json.loads(latest_json)
+            comic_id = random.randint(1, latest_json['num'])  # nosec
+        else:
+            logger.error('Requests encountered an error.')
+            logger.error('''HTTP GET response code:
+                        {}'''.format(latest.status_code))
+            latest.raise_for_status()
+            comic_id = 1337
+        return comic_id
+
     def _parse_for_comic(self, r):
-        content = r.text
-        comic_regex = r'<div id="comic".*?\n?.*?(//im.+?)".+?\s?title="(.+?)"'
-        comic = re.search(comic_regex, content)
+        comic = json.loads(r.text)
         if comic:
-            altText = comic.group(2).replace("&#39;", "'")
-            response = "%s %s" % (altText, "http:" + comic.group(1))
+            response = '*xkcd #{}* \n {} \n {}'.format(
+                        comic['num'], comic['alt'], comic['img'])
         else:
             logger.error('Unable to find comic')
-            response = "Unable to find a comic"
+            response = 'Unable to find a comic'
         return response
 
     def get_name(self):
