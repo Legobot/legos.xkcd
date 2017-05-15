@@ -90,7 +90,7 @@ class XKCD(Lego):
     def _parse_for_comic(self, r):
         comic = json.loads(r.text)
         if comic:
-            response = '*xkcd #{}* \n {} \n {}'.format(
+            response = 'xkcd #{}: {} {}'.format(
                         comic['num'], comic['alt'], comic['img'])
         else:
             logger.error('Unable to find comic')
