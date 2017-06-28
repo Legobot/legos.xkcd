@@ -19,7 +19,7 @@ description = 'xkcd comic fetcher plugin for Legobot'
 name = 'legos.xkcd'
 setup(
     name=name,
-    version='0.2.0',
+    version='0.2.1',
     namespace_packages=name.split('.')[:-1],
     license='GPLv3',
     description=description or name,
