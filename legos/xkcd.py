@@ -1,104 +1,85 @@
+import logging
+import random
+import re
+
 from Legobot.Lego import Lego
 import requests
-import logging
-import json
-import random
 
 logger = logging.getLogger(__name__)
 
 
 class XKCD(Lego):
     def listening_for(self, message):
-        if message['text'] is not None:
-            try:
-                return message['text'].split()[0] == '!xkcd'
-            except Exception as e:
-                logger.error('''XKCD lego failed to check message text:
-                            {}'''.format(e))
-                return False
+        text = message.get('text')
+
+        if text and text.startswith('!xkcd'):
+            return True
+
+        return False
 
     def handle(self, message):
-        logger.debug('Handling message...')
-        opts = self._handle_opts(message)
-        # Set a default return_val in case we can't handle our crap
-        return_val = '¯\_(ツ)_/¯'
+        text = message['text']
+        logger.debug(f'Handling message:\n{text}')
+        comic_id = self._get_comic_id(text)
+        response = self._get_comic(comic_id)
 
-        comic_id = self._parse_args(message)
+        if response:
+            opts = self.build_reply_opts(message)
+            self.reply(message, response, opts)
 
-        url = self._build_url(comic_id)
-
-        logger.info('Retrieving URL: {}'.format(url))
-        webpage = requests.get(url)
-        if webpage.status_code == requests.codes.ok:
-            return_val = self._parse_for_comic(webpage)
+    def _call_xkcd_api(self, comic_id=None):
+        if comic_id:
+            url = f'https://xkcd.com/{comic_id}/info.0.json'
         else:
-            logger.error('Requests encountered an error.')
-            logger.error('''HTTP GET response code:
-                        {}'''.format(webpage.status_code))
-            webpage.raise_for_status()
+            url = 'https://xkcd.com/info.0.json'
 
-        self.reply(message, return_val, opts)
+        call = requests.get(url)
 
-    def _parse_args(self, message):
-        comic_id = None
-        try:
-            comic_id = message['text'].split()[1]
-            logger.debug('Found an argument: {}'.format(str(comic_id)))
-        except IndexError:
-            comic_id = None
-            logger.debug('No args provided. Setting "comic_id" to None')
-        logger.debug('_parse_args comic_id: {}'.format(comic_id))
-        return comic_id
-
-    def _handle_opts(self, message):
-        try:
-            target = message['metadata']['source_channel']
-            opts = {'target': target}
-        except IndexError:
-            opts = None
-            logger.error('''Could not identify message source in message:
-                        {}'''.format(str(message)))
-        return opts
-
-    def _build_url(self, comic_id):
-        if comic_id is not None:
-            if comic_id == 'r' or comic_id == 'random':
-                logger.debug('Random comic requested...')
-                comic_id = self._get_random_comic_id()
-            else:
-                logger.debug('''User requested comic by id:
-                            {}'''.format(str(comic_id)))
-            url = 'http://xkcd.com/{}/info.0.json'.format(str(comic_id))
+        if call.status_code == 200:
+            return call.json()
         else:
-            url = 'http://xkcd.com/info.0.json'
-        return url
+            logger.error(
+                f'Error on GET {url}: {call.status_code}: {call.text}')
 
-    def _get_random_comic_id(self):
-        latest = requests.get('http://xkcd.com/info.0.json')
-        if latest.status_code == requests.codes.ok:
-            latest_json = latest.text
-            latest_json = json.loads(latest_json)
-            comic_id = random.randint(1, latest_json['num'])  # nosec
-        else:
-            logger.error('Requests encountered an error.')
-            logger.error('''HTTP GET response code:
-                        {}'''.format(latest.status_code))
-            latest.raise_for_status()
-            comic_id = 1337
-        return comic_id
+            return None
 
-    def _parse_for_comic(self, r):
-        comic = json.loads(r.text)
+    def _get_comic(self, comic_id):
+        response = None
+        comic = self._call_xkcd_api(comic_id)
+
         if comic:
             response = 'xkcd #{}: {} {}'.format(
-                        comic['num'], comic['alt'], comic['img'])
-        else:
-            logger.error('Unable to find comic')
-            response = 'Unable to find a comic'
+                comic['num'],
+                comic['alt'],
+                comic['img']
+            )
+
         return response
+
+    def _get_comic_id(self, text):
+        comic_id = None
+        params = re.split(r'\s+', text)
+
+        if len(params) > 1:
+            comic_id = params[1]
+
+        if comic_id in ('r', 'random'):
+            comic_id = self._get_random_comic_id()
+
+        return comic_id
+
+    def _get_random_comic_id(self):
+        comic_id = 1337
+        latest = self._call_xkcd_api()
+
+        if latest:
+            latest_id = latest['num']
+            comic_id = random.randint(1, latest_id)  # nosec
+
+        return comic_id
 
     def get_name(self):
         return 'xkcd'
 
     def get_help(self):
-        return 'Fetch an xkcd. Usage: !xkcd [r|random|number]'
+        return 'Fetch an xkcd. Usage: !xkcd [r|random|<int>]'
